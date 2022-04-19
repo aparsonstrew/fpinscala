@@ -1,5 +1,9 @@
 package fpinscala.datastructures
 
+import fpinscala.datastructures.List.length
+
+import scala.::
+
 sealed trait List[+A] // `List` data type, parameterized on a type, `A`
 case object Nil extends List[Nothing] // A `List` data constructor representing the empty list
 /* Another data constructor, representing nonempty lists. Note that `tail` is another `List[A]`,
@@ -50,19 +54,110 @@ object List { // `List` companion object. Contains functions for creating and wo
     foldRight(ns, 1.0)(_ * _) // `_ * _` is more concise notation for `(x,y) => x * y`; see sidebar
 
 
-  def tail[A](l: List[A]): List[A] = ???
+  def tail[A](l: List[A]): List[A] =
+    l match {
+      case Nil => l
+      case Cons(_, t) => t
+    }
 
-  def setHead[A](l: List[A], h: A): List[A] = ???
+  def setHead[A](l: List[A], h: A): List[A] =
+    l match {
+      case Nil => List(h)
+      case Cons(_, t) => Cons(h, t)
+    }
 
-  def drop[A](l: List[A], n: Int): List[A] = ???
+  def drop[A](l: List[A], n: Int): List[A] =
+    l match {
+      case _ if n <= 0 => l
+      case Nil => l
+      case Cons(_, Nil) if n > 0 => Nil
+      case Cons(_, t) => drop(t, n-1)
+    }
 
-  def dropWhile[A](l: List[A], f: A => Boolean): List[A] = ???
+  def dropWhile[A](l: List[A], f: A => Boolean): List[A] =
+    l match {
+      case Nil => l
+      case Cons(h, t) if f(h) => dropWhile(t, f)
+      case _ => l
+    }
 
-  def init[A](l: List[A]): List[A] = ???
+  def init[A](l: List[A]): List[A] =
+    l match {
+      case Nil => l
+      case Cons(_, Nil) => Nil
+      case Cons(h, t) => Cons(h, init(t))
+    }
 
-  def length[A](l: List[A]): Int = ???
+  def length[A](l: List[A]): Int =
+    foldRight(l, 0)((_, b) => b + 1)
 
-  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B = ???
+  def foldLeft[A,B](l: List[A], z: B)(f: (B, A) => B): B =
+    l match {
+      case Nil => z
+      case Cons(h,t) => foldLeft(t, f(z, h))(f)
+    }
 
-  def map[A,B](l: List[A])(f: A => B): List[B] = ???
+  def productL(ns: List[Double]): Double =
+    foldLeft(ns, 1.0)(_ * _)
+
+  def sumL(ns: List[Int]): Int =
+    foldLeft(ns, 0)(_ + _)
+
+  def lengthL[A](l: List[A]): Int =
+    foldLeft(l, 0)((b, _) => b + 1)
+
+  def listReverse[A](l: List[A]): List[A] =
+    foldLeft(l, Nil: List[A])((b, a) => Cons(a, b))
+
+  def append2[A](l1: List[A], l2: List[A]): List[A] =
+    foldRight(l1, l2)((a, b) => Cons(a, b))
+
+  def addOne(ns: List[Int]): List[Int] =
+    ns match {
+      case Nil => ns
+      case Cons(h, t) => Cons(h + 1, addOne(t))
+    }
+
+  def doubleToString(ns: List[Double]): List[String] =
+    ns match {
+      case Nil => Nil
+      case Cons(h, t) => Cons(h.toString, doubleToString(t))
+    }
+
+  def map[A,B](l: List[A])(f: A => B): List[B] =
+    l match {
+      case Nil => Nil
+      case Cons(h, t) => Cons(f(h), map(t)(f))
+    }
+
+  def filter[A](as: List[A])(f: A => Boolean): List[A] = {
+    as match {
+      case Nil => as
+      case Cons(h, t) => if (f(h)) Cons(h, filter(t)(f)) else filter(t)(f)
+    }
+  }
+
+  def flatten[A](as: List[List[A]]): List[A] = {
+    foldRight(as, Nil: List[A])((a, b) => append(a, b))
+  }
+
+  def flatMap[A,B](as: List[A])(f: A => List[B]): List[B] =
+    flatten(map(as)(f))
+
+  def filter2[A](as: List[A])(f: A => Boolean): List[A] =
+    flatten(map(as)(a => if(f(a)) List(a) else Nil))
+
+  def addPairwise(a: List[Int], b: List[Int]): List[Int] =
+    (a, b) match {
+      case (Nil, _) => Nil
+      case (_, Nil) => Nil
+      case (Cons(h1, t1), Cons(h2, t2)) => Cons(h1+h2, addPairwise(t1, t2))
+    }
+
+  def zipWith[A, B, C](as: List[A], bs: List[B])(f: (A, B) => C): List[C] =
+    (as, bs) match {
+      case (Nil, _) => Nil
+      case (_, Nil) => Nil
+      case (Cons(h1, t1), Cons(h2, t2)) => Cons(f(h1, h2), zipWith(t1, t2)(f))
+    }
 }
