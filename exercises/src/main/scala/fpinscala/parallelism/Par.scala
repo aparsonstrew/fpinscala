@@ -2,6 +2,7 @@ package fpinscala.parallelism
 
 import java.util.concurrent._
 import language.implicitConversions
+import scala.annotation.tailrec
 
 object Par {
   type Par[A] = ExecutorService => Future[A]
@@ -29,6 +30,19 @@ object Par {
       def call = a(es).get
     })
 
+  def lazyUnit[A](a: => A): Par[A] = fork(unit(a))
+
+  def asyncF[A, B](f: A => B): A => Par[B] =
+    a => lazyUnit(f(a))
+
+  def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] =
+    fork {
+      as match {
+        case Nil => lazyUnit(as)
+        case h :: t => if(f(h)) map2(lazyUnit(h), parFilter(t)(f))(_::_) else parFilter(t)(f)
+      }
+    }
+
   def map[A,B](pa: Par[A])(f: A => B): Par[B] = 
     map2(pa, unit(()))((a,_) => f(a))
 
@@ -44,6 +58,35 @@ object Par {
     es => 
       if (run(es)(cond).get) t(es) // Notice we are blocking on the result of `cond`.
       else f(es)
+
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] = {
+    es =>
+      val nn = run(es)(n).get
+      run(es)(choices(nn))
+  }
+
+  def choice2[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
+    choiceN(map(cond)(a => if (a) 0 else 1))(List(t, f))
+
+  def chooser[A,B](pa: Par[A])(choices: A => Par[B]): Par[B] = {
+    es =>
+      val a = run(es)(pa).get
+      run(es)(choices(a))
+  }
+
+  def join[A](a: Par[Par[A]]): Par[A] = {
+    es =>
+      val aa = run(es)(a).get
+      run(es)(aa)
+  }
+
+  def flatMap[A,B](pa: Par[A])(f: A => Par[B]): Par[B] =
+    join(map(pa)(f))
+
+
+  def joinWithFlatMap[A](a: Par[Par[A]]): Par[A] =
+    flatMap(a)(aa => aa)
+
 
   /* Gives us infix syntax for `Par`. */
   implicit def toParOps[A](p: Par[A]): ParOps[A] = new ParOps(p)
