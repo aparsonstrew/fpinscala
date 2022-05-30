@@ -4,6 +4,18 @@ import language.higherKinds
 
 trait Parsers[Parser[+_]] { self => // so inner classes may call methods of trait
 
+  def many[A](p: Parser[A]): Parser[List[A]]
+
+  def map[A,B](a: Parser[A])(f: A => B): Parser[B]
+
+  def product[A,B](p: Parser[A], p2: Parser[B]): Parser[(A,B)]
+
+  def map2[A,B,C](p: Parser[A], p2: Parser[B])(f: (A,B) => C): Parser[C] =
+    map(product(p, p2))(x => f(x._1, x._2))
+
+  def many1[A](p: Parser[A]): Parser[List[A]] =
+    map(many(p))(xp => if(xp.size == 0 || xp.head != ))
+
   case class ParserOps[A](p: Parser[A]) {
 
 
